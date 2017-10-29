@@ -3,6 +3,8 @@
 //var Authentication = artifacts.require("./Authentication.sol");
 var Adoption = artifacts.require("./petstore/Adoption.sol")
 var SmartShare = artifacts.require("./share/SmartShare.sol")
+var JobCVOracle = artifacts.require("./jobcoin/JobCVOracle.sol")
+var JCV = artifacts.require("./jobcoin/JCV.sol")
 
 module.exports = function(deployer) {
   /*deployer.deploy(Ownable);
@@ -12,4 +14,6 @@ module.exports = function(deployer) {
   deployer.deploy(Authentication);*/
   deployer.deploy(Adoption);
   deployer.deploy(SmartShare);
+  deployer.deploy(JobCVOracle);
+  deployer.deploy(JCV);
 };
