@@ -5,5 +5,6 @@ export default keyMirror({
   CLOSE_NAV         : null,
   VOTE              : null,
   UPLOAD            : null,
-  SPECIFY_PROVIDER  : null
+  SPECIFY_PROVIDER  : null,
+  SPECIFY_ORACLE    : null
 });

@@ -11,7 +11,7 @@ import { Button } from '../Button'
 export default function AppBar(props) {
   return (
     <div className={styles}>
-      <MuiAppBar {...props} className="app-bar" title="Percaya Smart Share">
+      <MuiAppBar {...props} className="app-bar" title="JCV - My Jobcoin CV">
       </MuiAppBar>
     </div>
   );

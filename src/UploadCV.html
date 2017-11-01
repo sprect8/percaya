@@ -8,9 +8,12 @@
   <link rel="manifest" href="manifest.json">
   <link rel="shortcut icon" type="image/png" href="./src/images/favicon.png"/>
   <link rel="icon" sizes="192x192" href="images/chrome-touch-icon-192x192.png">
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src="https://d3js.org/queue.v1.min.js"></script>  
 </head>
 
 <body>
+    
   <div id="name">
       Name: <input type="text" id="nameField"/>
   </div>
@@ -32,12 +35,76 @@
   <div id="educationHistory">
       Education: <textarea id="educationHist"></textarea>
   </div>
-  <div id="references">
+  <div id="referencesDiv">
       References: <textarea id="references"></textarea>
   </div>
 
-  <input type="submit"/>
+  <input type="submit" id='submitter'/>
+
+  <script>
+      d3.select("#submitter").on("click", (d) => {
+          var name = d3.select("#nameField").node().value;
+          var desc = d3.select("#descField").node().value;
+          var email = d3.select("#emailField").node().value;
+          var phone = d3.select("#phoneField").node().value;
+          var location = d3.select("#locnField").node().value;
+          var history = d3.select("#jobHist").node().value;
+          var education = d3.select("#educationHist").node().value;
+          var refs = d3.select("#references").node().value;
+
+          var publicData = {
+              "name":name,
+              "desc":desc              
+          };
+
+          var privateData = {
+              "email":email,
+              "phone":phone,
+              "location":location              
+          };
+
+          var historyData = {
+              "history":history
+          };
+
+          var educationData = {
+              "eduation":education
+          };
+
+          var references = {
+              "ref":refs
+          }
+
+          function initWeb3() {
+              if (typeof web3 !== 'undefined') {
+                  App.web3Provider = web3.currentProvider;
+                  web3 = new Web3(web3.currentProvider);
+                  console.log("using existing");
+              } else {
+                  App.web3Provider = new web3.providers.HttpProvider('http://localhost:8585');
+                  web3 = new Web3(App.web3Provider);
+                  console.log("using new one");
+              }
+
+              return App.initContract();
+          }
+
+          queue()
+          .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(publicData))
+          .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(privateData))
+          .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(historyData))
+          .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(educationData))
+          .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(references))
+          .await((err, pub, priv, hist, edu, ref)=>{
+              console.log("Results are", pub, priv, hist, edu, ref);
+          })
+
+          initWeb3();
+
+          
+
+          // 
+      })
+  </script>
 </body>
-
-
 </html>

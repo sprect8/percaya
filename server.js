@@ -1,3 +1,6 @@
+const sys = require('sys');
+var exec = require('child_process').exec;
+
 const http = require('http');
 const express = require('express');
 const app = express();
@@ -24,6 +27,38 @@ app.use(require('morgan')('short'));
 
 app.get("/contracts/*", function root(req, res) {
   res.sendFile(__dirname + '/build/contracts/' + req.params[0]);
+});
+
+app.get("/storeInIPFS", (req, res) => {
+  //res.send(exec('ipfs add'));
+  var responseObj = [];
+  console.log(req.query);
+  exec("/home/osboxes/mybin/add-ipfs " + req.query.content, function(err, stdout, stderr) {
+    console.log(stdout);    
+    res.contentType("text");
+    res.send(stdout);
+
+  })  
+});
+
+app.get("/getFromIPFS", (req, res) => {
+  http.get("http://localhost:8080/ipfs/" + req.query.identifier, (resp) => {
+    let data = '';
+    resp.on("data", (chunk)=>{
+      data += chunk;
+    })
+    resp.on('end', () => {
+      console.log(data);
+      res.send(data);
+    })
+    
+    
+  });
+});
+
+app.get("/jobcoin/:fileName", (req, res) => {
+  console.log(req.params);
+  res.sendFile(__dirname + '/src/' + req.params.fileName);
 });
 
 app.get(/.*/, function root(req, res) {

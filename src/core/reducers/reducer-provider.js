@@ -12,6 +12,11 @@ export function providerReducer(state = initialState, action) {
       provider: action.provider
     });
 
+  case constants.SPECIFY_ORACLE:
+    return Object.assign({}, state, {
+      oracle: action.oracle
+    })
+
   default:
     return state;
   }

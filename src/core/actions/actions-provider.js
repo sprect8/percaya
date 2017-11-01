@@ -9,3 +9,10 @@ export function specifyProvider(provider) {
     type    : constants.SPECIFY_PROVIDER
   };
 }
+
+export function specifyOracle(oracle) {
+  return {
+    oracle: oracle,
+    type  : constants.SPECIFY_ORACLE
+  }
+}

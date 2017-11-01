@@ -27,7 +27,7 @@ class LeftNavBar extends Component {
           docked={false}
           open={this.props.ui.leftNavOpen}
           onRequestChange={this.closeNav}>
-          <AppBar title="" />
+          <AppBar title="Navigate" />
           <Divider />
         </Drawer>
       </div>
