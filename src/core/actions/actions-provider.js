@@ -16,3 +16,10 @@ export function specifyOracle(oracle) {
     type  : constants.SPECIFY_ORACLE
   }
 }
+
+export function specifyCVNBI(nbi) {
+  return {
+    nbi : nbi,
+    type: constants.SPECIFY_CV_NBI
+  }
+}

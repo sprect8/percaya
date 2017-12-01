@@ -2,6 +2,7 @@ import React, { Component }       from 'react';
 import { connect }                from 'react-redux';
 import { bindActionCreators }     from 'redux';
 import injectTapEventPlugin       from 'react-tap-event-plugin';
+import darkBaseTheme              from 'material-ui/styles/baseThemes/darkBaseTheme'
 import getMuiTheme                from 'material-ui/styles/getMuiTheme';
 import MuiThemeProvider           from 'material-ui/styles/MuiThemeProvider';
 import { HashRouter, Route }      from 'react-router-dom'
@@ -43,32 +44,30 @@ export class App extends Component {
       console.log("Loading from localhost");
       web3Provider = new Web3(new web3Provider.providers.HttpProvider("http://localhost:8545"));
     }
-    console.log(web3Provider.sendAsync);
     actions.provider.specifyProvider(web3Provider);
-    initContract(currentProvider);
+    this.initContract(currentProvider);
   }
 
-  initContract(currentProvider) {
+  initContract=(currentProvider)=>{
     d3.json('/contracts/JobCVOracle.json', (data) => {
-      
-      var oracle = TruffleContract(data);
-      // actions.provider.specifyOracle(oracle)
-      oracle.setProvider(currentProvider);
-      web3Provider.eth.getAccounts().then(console.log);
-      console.log(oracle, this.props, "Dafaqul");
-
-      // deploy 
-      oracle.deployed().then(function(instance) {
-        console.log("Executed");
-        actions.provider.specifyOracle(instance);
+     
+      d3.json('/contracts/JobCV.json', (jcvdata) => {
+        console.log(this.props, this.state);
+        var oracle = TruffleContract(data);
+        // actions.provider.specifyOracle(oracle)
+        oracle.setProvider(currentProvider);
+        console.log(this.props.web3);
+        this.props.web3.eth.getAccounts().then(console.log);
+        console.log(oracle, this.props, "Dafaqul");
+  
+        // deploy 
+        oracle.deployed().then((instance) => {                  
+          this.props.actions.provider.specifyCVNBI(jcvdata);
+          this.props.actions.provider.specifyOracle(instance);                          
+        });
         
       });
     });
-
-  }
-
-  checkCVExists() {
-    //     0x03c79237c246fAdf9730D3C526F03C0AdFa6Bd80
   }
 
   render() {
@@ -80,6 +79,7 @@ export class App extends Component {
             <div className="container">
               <div>
                 <Route exact path="/" component={Home}/>
+                <Route exact path="/CreateContract" component={Home}/>
               </div>
             </div>
             <LeftNavBar />
@@ -88,6 +88,13 @@ export class App extends Component {
       </MuiThemeProvider>
     );
   }
+}
+
+function mapStateToProps(state) {  
+  return {
+    oracle: state.provider.oracle,
+    web3: state.provider.provider
+  };
 }
 
 function mapDispatchToProps(dispatch) {
@@ -99,4 +106,4 @@ function mapDispatchToProps(dispatch) {
   };
 }
 
-export default connect(null, mapDispatchToProps)(App);
+export default connect(mapStateToProps, mapDispatchToProps)(App);

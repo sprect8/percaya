@@ -6,8 +6,14 @@ const express = require('express');
 const app = express();
 const isDevMode = process.env.NODE_ENV === 'development';
 const request = require('request')
+const { activeFields } = require('./src/core/fields');
+const bodyParser = require('body-parser');
 
 app.use(require('morgan')('short'));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({
+  extended: true
+}));
 
 (function initWebpack() {
   const webpack = require('webpack');
@@ -37,8 +43,87 @@ app.get("/storeInIPFS", (req, res) => {
     console.log(stdout);    
     res.contentType("text");
     res.send(stdout);
-
   })  
+});
+
+app.post("/saveResume", (req, res) => {
+  //res.send(exec('ipfs add'));
+  var responseObj = [];
+  console.log(req.body);
+
+  let publicData = activeFields.Public;
+  let privateData = activeFields.Private;
+
+  let publicResume = {};
+  let privateCategories = {};
+
+  let completed = 1; // for public data
+
+  publicData.forEach((i)=>{
+    publicResume[i.field] = req.body[i.field];
+  });
+
+  var categories = [];
+
+  privateData.forEach((i)=>{
+    if (!privateCategories[i.category]) {
+      privateCategories[i.category] = {};
+      completed ++; 
+      categories.push(i.category);
+    }
+    privateCategories[i.category][i.field] = req.body[i.field];
+  });
+
+  var completedRecords = {};
+  console.log("Total Completed is", completed, categories);
+
+  var completedWriter = (key, stdout)=>{
+    console.log(stdout);    
+    completedRecords[key] = stdout.split(" ")[2].trim();
+    completed --;
+    if (completed > 0) {
+      return;
+    }   
+    console.log("Writing to out", completedRecords);
+    res.contentType("application/json");
+    res.send(JSON.stringify(completedRecords));    
+  }
+
+  console.log(publicResume, privateCategories);
+  categories.forEach((k)=>{
+    console.log("Writing ", JSON.stringify(privateCategories[k]), k);
+    exec("/home/osboxes/mybin/add-ipfs '" + JSON.stringify(privateCategories[k]) + "'", function(err, stdout, stderr) {    
+        completedWriter(k, stdout);
+    });
+  })
+  console.log("Writing ", JSON.stringify(publicResume));
+  exec("/home/osboxes/mybin/add-ipfs '" + JSON.stringify(publicResume) + "'", function(err, stdout, stderr) {
+    completedWriter("publicInfo", stdout);
+  })  
+});
+
+app.get("/loadFromIPFS", (req, res) => {
+  var q = JSON.parse(req.query.items);
+  var done = {};
+  var expected = q.length;
+
+  q.forEach((i)=>{
+    var e = i;
+    http.get("http://localhost:8080/ipfs/" + e, (resp) => {
+      
+      let data = '';
+      resp.on("data", (chunk) => {
+        data += chunk;
+      })
+      resp.on("end", () => {
+        done[e] = data;
+        expected --;  
+        if (expected == 0) {
+          res.send(done);
+        }
+      })
+    });    
+  });
 });
 
 app.get("/getFromIPFS", (req, res) => {

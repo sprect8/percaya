@@ -5,6 +5,13 @@ import { Drawer,
          AppBar,
          Divider }            from 'material-ui';
 
+import Paper                  from 'material-ui/Paper';
+import FontIcon               from 'material-ui/FontIcon';
+import Menu                   from 'material-ui/Menu';
+import MenuItem               from 'material-ui/MenuItem';
+
+        
+
 /* component styles */
 import { styles } from './styles.scss';
 
@@ -29,6 +36,18 @@ class LeftNavBar extends Component {
           onRequestChange={this.closeNav}>
           <AppBar title="Navigate" />
           <Divider />
+          <Paper>
+            <Menu>
+              <MenuItem primaryText="CV Details"/>
+              <MenuItem primaryText="Register CV"/>
+              <Divider />
+              <MenuItem primaryText="Company Details"/>
+              <MenuItem primaryText="Register Company"/>
+              <Divider />
+              <MenuItem primaryText="Education Institute"/>
+              <MenuItem primaryText="Register Institute"/>              
+            </Menu>
+          </Paper>
         </Drawer>
       </div>
     );

@@ -19,22 +19,16 @@ contract JobCVOracle is Killable {
    * This is returned as an address, which we can then use to interact
    * with the CV
    */
-  function deployJCV (string publicInfo, 
-                      string sensitive,
-                      string hist,
-                      string education,
-                      string ref) returns (address) 
-  {    
-
+  function deployJCV (string sensitive, string ref, string hist, string education, string publicInfo) payable returns (address) {
     JobCV jobCV = new JobCV();
     jobCV.updateResume(sensitive, ref, hist, education, publicInfo);
     jobCV.transferOwnership(msg.sender);    
         
     deployedCVs[msg.sender] = address(jobCV);
-    return address(jobCV);
+    return address(jobCV);    
   }
 
-  function getJCV() returns (address) {
+  function getJCV() constant returns (address) {
     return deployedCVs[msg.sender];
   }
   /**

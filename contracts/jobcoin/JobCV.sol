@@ -126,6 +126,10 @@ contract JobCV is Killable {
         return sensitiveData;
     }
 
+    function getSensitive2() returns(string) {
+        return sensitiveData;
+    }
+
     /** update our resume */
 
     function updateSensitiveData(string sensitive) onlyOwner {
@@ -146,6 +150,10 @@ contract JobCV is Killable {
 
     function updatePublicInfo(string publicInfo) onlyOwner {
         publicData = publicInfo;
+    }
+
+    function getResumeDetails() onlyOwner returns(string, string, string, string, string) {
+        return (publicData, sensitiveData, jobHistoryRef, educationRef, referencesRef);
     }
 
     /** update resume in one go */

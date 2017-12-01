@@ -16,6 +16,10 @@ export function providerReducer(state = initialState, action) {
     return Object.assign({}, state, {
       oracle: action.oracle
     })
+  case constants.SPECIFY_CV_NBI:
+    return Object.assign({}, state, {
+      cvNBI : action.nbi
+    });
 
   default:
     return state;

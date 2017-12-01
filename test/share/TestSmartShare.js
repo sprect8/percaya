@@ -31,33 +31,33 @@ contract('SmartShare', function(acc) {
     it("should deduct funds when i call deposit", function() {
         //console.log("Balance is " + smartShare.owner);
 
-        console.log("SM", smartShare.address, web3.fromWei(web3.eth.getBalance(smartShare.address), 'ether').toNumber());
+        //console.log("SM", smartShare.address, web3.fromWei(web3.eth.getBalance(smartShare.address), 'ether').toNumber());
 
         smartShare.getOwner.call().then(function(cb) {
             var startBalance = web3.fromWei(web3.eth.getBalance(cb), 'ether').toNumber();
-            console.log("Owner is: ", cb, startBalance);
+            //console.log("Owner is: ", cb, startBalance);
             smartShare.shareProfit({from:cb, to:smartShare.address, value: web3.toWei(1, "ether")})
             .then(function(tx) {
                 var endBalance = web3.fromWei(web3.eth.getBalance(cb), 'ether').toNumber();
-                console.log("Profit shared", cb, web3.fromWei(web3.eth.getBalance(cb), 'ether').toNumber());
-                console.log("Start Balance", startBalance, endBalance);
+                //console.log("Profit shared", cb, web3.fromWei(web3.eth.getBalance(cb), 'ether').toNumber());
+                //console.log("Start Balance", startBalance, endBalance);
                 assert.equal(startBalance > endBalance, true);
 
-                console.log("SM-Before Test", smartShare.address, web3.fromWei(web3.eth.getBalance(smartShare.address), 'ether').toNumber());               
+                //console.log("SM-Before Test", smartShare.address, web3.fromWei(web3.eth.getBalance(smartShare.address), 'ether').toNumber());               
 
                 assert.equal(web3.fromWei(web3.eth.getBalance(smartShare.address), 'ether').toNumber() > 0, true);                
                 startBalance = web3.fromWei(web3.eth.getBalance(acc[1]), 'ether').toNumber();
 
                 smartShare.getPendingPayment.call({from:acc[1]}).then(function(done) {
-                    console.log("Pending: ", web3.fromWei(done, 'ether').toNumber());
+                    //console.log("Pending: ", web3.fromWei(done, 'ether').toNumber());
                 });
 
                 // withdraw profits
                 smartShare.withdrawProfit({from:acc[1]}).then(function(done) {
-                    console.log("Done", done);
+                    //console.log("Done", done);
                     var endBalance = web3.fromWei(web3.eth.getBalance(acc[1]), 'ether').toNumber();
-                    console.log("SM-After Test", smartShare.address, web3.fromWei(web3.eth.getBalance(smartShare.address), 'ether').toNumber());
-                    console.log(startBalance, "=>", endBalance);
+                    //console.log("SM-After Test", smartShare.address, web3.fromWei(web3.eth.getBalance(smartShare.address), 'ether').toNumber());
+                    //console.log(startBalance, "=>", endBalance);
                     assert.equal(startBalance < endBalance, true);
                 });
             });            
