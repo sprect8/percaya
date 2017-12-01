@@ -5,7 +5,7 @@ import "./../zeppelin/lifecycle/Killable.sol";
  * to provide a signed certificate as requested by an individual
  *
  */
-contract CertifierSource is Killable{    
+contract CertifierSource is Killable {    
   // how much it costs for someone to certify  
   uint128 private certificationCost = 1;
   

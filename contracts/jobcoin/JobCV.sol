@@ -78,46 +78,6 @@ contract JobCV is Killable {
     }
 
     /**
-     * This is a request for the retrieval of sensitive data inside ipfs
-     * This data is encrypted using the public key of the owner. When a user requests
-     * this they must pay a price, and the information is provided 
-     *      
-     */
-    function requestSensitiveData(address requester) payable returns(string) {
-
-    }
-
-    /**
-     * Get Job History
-     *      
-     */
-    function requestJobHistoryData(address requester) payable returns(string) {
-
-    }
-
-    /**
-     * Get Education History
-     *     
-     */
-    function requestEducationHistoryData(address requester) payable returns(string) {
-
-    }
-
-    /**
-     * Get Reference Data      
-     */
-    function requestReferenceData(address requester) payable returns(string) {
-
-    }
-
-    /**
-     * Get full resume of the person
-     */
-    function requestResumeDetails(address requester) payable returns(string) {
-
-    }
-
-    /**
      * This is sensitive data that only owners can get
      * technically anyone can read this data since its on the blockchain, but because
      * its encrypted anyway people won't be able to read the data
