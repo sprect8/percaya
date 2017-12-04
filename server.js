@@ -2,6 +2,7 @@ const sys = require('sys');
 var exec = require('child_process').exec;
 
 const http = require('http');
+const https = require('https');
 const express = require('express');
 const app = express();
 const isDevMode = process.env.NODE_ENV === 'development';
@@ -46,6 +47,17 @@ app.get("/storeInIPFS", (req, res) => {
   })  
 });
 
+app.post("/storeInIPFS", (req, res) => {
+  //res.send(exec('ipfs add'));
+  var responseObj = [];
+  console.log(req.body);
+  exec("/home/osboxes/mybin/add-ipfs '" + JSON.stringify(req.body) + "'", function(err, stdout, stderr) {
+    console.log(stdout);    
+    res.contentType("text");
+    res.send(stdout);
+  })  
+});
+
 app.post("/saveResume", (req, res) => {
   //res.send(exec('ipfs add'));
   var responseObj = [];
@@ -78,8 +90,9 @@ app.post("/saveResume", (req, res) => {
   console.log("Total Completed is", completed, categories);
 
   var completedWriter = (key, stdout)=>{
-    console.log(stdout);    
-    completedRecords[key] = stdout.split(" ")[2].trim();
+    console.log("Error>", stdout);  
+    let hash = JSON.parse(stdout).Hash;  
+    completedRecords[key] = hash; //stdout.split(" ")[2].trim();
     completed --;
     if (completed > 0) {
       return;
@@ -109,13 +122,15 @@ app.get("/loadFromIPFS", (req, res) => {
 
   q.forEach((i)=>{
     var e = i;
-    http.get("http://localhost:8080/ipfs/" + e, (resp) => {
+    console.log("Input is ", e);
+    https.get("https://ipfs.infura.io:5001/api/v0/cat/" + e, (resp) => {
       
       let data = '';
       resp.on("data", (chunk) => {
         data += chunk;
       })
       resp.on("end", () => {
+        console.log("Done is", data);
         done[e] = data;
         expected --;  
         if (expected == 0) {
@@ -127,7 +142,7 @@ app.get("/loadFromIPFS", (req, res) => {
 });
 
 app.get("/getFromIPFS", (req, res) => {
-  http.get("http://localhost:8080/ipfs/" + req.query.identifier, (resp) => {
+  https.get("https://ipfs.infura.io:5001/api/v0/cat/" + req.query.identifier, (resp) => {
     let data = '';
     resp.on("data", (chunk)=>{
       data += chunk;
@@ -144,6 +159,18 @@ app.get("/getFromIPFS", (req, res) => {
 app.get("/jobcoin/:fileName", (req, res) => {
   console.log(req.params);
   res.sendFile(__dirname + '/src/' + req.params.fileName);
+});
+
+app.get("/run", function root(req, res) {
+  res.sendFile(__dirname + '/src/UploadCV.html');
+});
+
+app.get("/employ", function root(req, res) {
+  res.sendFile(__dirname + '/src/RegisterEmployer.html');
+});
+
+app.get("/institute", function root(req, res) {
+  res.sendFile(__dirname + '/src/RegisterInstitute.html');
 });
 
 app.get(/.*/, function root(req, res) {

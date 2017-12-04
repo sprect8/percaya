@@ -9,87 +9,248 @@
   <link rel="shortcut icon" type="image/png" href="./src/images/favicon.png"/>
   <link rel="icon" sizes="192x192" href="images/chrome-touch-icon-192x192.png">
   <script src="https://d3js.org/d3.v4.min.js"></script>
-  <script src="https://d3js.org/queue.v1.min.js"></script>  
+  <script src="https://d3js.org/queue.v1.min.js"></script>    
+  <script src="node_modules/truffle-contract/dist/truffle-contract.js"></script>
+  <script src="node_modules/truffle-contract-schema/index.js"></script>
+  <script src="node_modules/axios/dist/axios.min.js"></script>
+  <script src="node_modules/truffle-contract-blockchain-utils/index.js"></script>
 </head>
 
 <body>
-    
+  <div id="status">Creating CV</div>  
+  <div id="mycoinbase">CoinBase</div>  
   <div id="name">
-      Name: <input type="text" id="nameField"/>
+      Public: <textarea id="publicData"></textarea>
   </div>
-  <div id="description">
-      Desc: <input type="text" id="descField"/>
-  </div>
-  <div id="email">
-      Email: <input type="email" id="emailField"/>
-  </div>
-  <div id="phone">
-      Phone: <input type="number" id="phoneField"/>
-  </div>
-  <div id="location">
-      Location: <input type="text" id="locnField"/>
+  <div id="name">
+    Private: <textarea id="privateData"></textarea>
   </div>
   <div id="jobHistory">
-      History: <textarea id="jobHist"></textarea>
+      History: <textarea id="jobHist"></textarea>      
   </div>
   <div id="educationHistory">
-      Education: <textarea id="educationHist"></textarea>
+      Education: <textarea id="educationHist"></textarea>      
   </div>
   <div id="referencesDiv">
       References: <textarea id="references"></textarea>
   </div>
 
-  <input type="submit" id='submitter'/>
+  <input type="submit" id='submitter'/>  
 
   <script>
+      var App = {};
+      var web3;
+
+      function configure() {
+      // init defaults
+        d3.select("#publicData").text(JSON.stringify({name:'Zain', description:'Zain'}));
+        d3.select("#privateData").text(JSON.stringify({phone:'123', email:'123'}));
+        d3.select("#jobHist").text(JSON.stringify([{'name':'Google', 'address':'0x00', start:'2010/01/01', end:'2015/01/01'}, {'name':'Facebook', 'address':'0x00', start:'2015/01/02', end:null}]));
+        d3.select("#educationHist").text(JSON.stringify([{'name':'Google', 'address':'0x00', start:'2010/01/01', end:'2015/01/01'}, {'name':'Facebook', 'address':'0x00', start:'2015/01/02', end:null}]));
+        d3.select("#references").text("Zain is awesome")
+      }
+
+      function loadJCV(address) {
+        // load details of resume
+        
+        let dataObj = JSON.parse(JSON.stringify(App.cvNBI));
+        console.log(dataObj);
+        // dataObj.address = address;
+        var oracle = TruffleContract(dataObj);
+        console.log(oracle);    
+        // actions.provider.specifyOracle(oracle)
+        oracle.setProvider(App.web3Provider);    
+        // deploy 
+        return new Promise((done) => oracle.deployed().then((inst)=>{
+            oracle.address = address; 
+            oracle.at(address); 
+            oracle.deployed().then((inst)=>{
+                console.log(oracle, inst, address);      
+                done(inst)
+            });
+        }));
+      }
+
+      function load() {
+          var address = App.address;
+          loadJCV(address).then((r)=>{
+            r.address = address;
+            
+            r.getResumeDetails.call({from:App.coinbase}).then((results)=> {
+              var details = {};
+              // [publicData, sensitiveData, jobHistoryRef, educationRef, referencesRef]
+              console.log(JSON.stringify(results));
+              results = results.map((r) => {return r.trim()});
+              axios.get("/loadFromIPFS?items="+JSON.stringify(results))
+              .then((response)=>{
+                //console.log("Created", response);
+                // merge
+                d3.keys(response.data).forEach((k)=>{
+                  var json = JSON.parse(response.data[k]);
+                  /*d3.keys(json).forEach((kk)=>{
+                    details[kk] = json[kk];
+                  });*/
+                  let inst = d3.select("#references");
+                  let dataObj = response.data[k];
+
+                  if (json.name) {
+                      inst = d3.select("#publicData");
+                  }
+                  else if (json.phone) {
+                      inst = d3.select("#privateData");
+                  }
+                  else if (json.jobHist) {
+                      inst = d3.select("#jobHist");                      
+                      dataObj = JSON.stringify(JSON.parse(json.jobHist));
+                  }
+                  else if (json.education) {
+                      inst = d3.select("#educationHist");
+                      dataObj = JSON.stringify(JSON.parse(json.education));
+                  }
+                  inst.text(dataObj);
+                })
+      
+                console.log("Details is ", details);
+                //this.setState({"details":details});
+              })
+              .catch((error)=>{
+                console.log("Error", error);
+              })
+            });
+          });
+      }
+
+      function checkMyCV() {
+        App.oracle.getJCV.call({from:App.coinbase}).then((address)=>{
+            if(address == "0x0000000000000000000000000000000000000000") {          
+                d3.select("#status").html("Create a New CV");
+                App.newCV = true;
+                configure();
+            }
+            else {
+                d3.select("#status").html("Editing an Existing CV");
+                App.newCV = false;
+                App.address = address;
+                load();
+            }
+        });
+      }
+
+      function createJCV(details) {
+        App.oracle.deployJCV(details.sensitive, 
+            details.ref, 
+            details.hist, 
+            details.education, 
+            details.publicInfo,
+            {from: App.coinbase})
+        .then((result)=>{
+            console.log("Successfully created contract");
+            /*App.oracle.getJCV({from: App.coinbase}).then((result)=>{
+                //this.updateJCV(details, result);
+                console.log("JCV retrieved with coinbase as ", result);
+            });*/
+            checkMyCV();
+        }).catch((e)=>{
+            console.log("Failed", e);
+        });      
+      }
+
+      function updateJCV(details) {
+        var address = App.address;
+        loadJCV(address).then((r)=>{
+            r.address = address;
+          
+            r.updateResume(details.sensitive, 
+                details.ref, 
+                details.hist, 
+                details.education, 
+                details.publicInfo, 
+                {from: App.coinbase}
+            ).then((res)=>{
+                console.log("Updated", res);
+                // loaded?
+            }).catch((error)=>{
+                console.log(error, "Failed to upload");
+            });
+        });
+      }
+
+      function saveResume(resume) {
+        axios.post("/saveResume", resume)
+            .then((response)=>{
+                console.log("Created Contract", response);
+                if (App.newCV)
+                  createJCV(response.data);
+                else
+                  updateJCV(response.data);
+            })
+            .catch((error)=>{
+                console.log("Error", error);            
+            })
+      }
+      
+      function initWeb3() {
+            if (typeof web3 !== 'undefined') {
+                App.web3Provider = web3.currentProvider;
+                web3 = new Web3(web3.currentProvider);
+                console.log("using existing");
+            } else {
+                App.web3Provider = new web3.providers.HttpProvider('http://localhost:8585');
+                web3 = new Web3(App.web3Provider);
+                console.log("using new one");
+            }
+
+            d3.json('/contracts/JobCVOracle.json', (data) => {
+            
+                d3.json('/contracts/JobCV.json', (jcvdata) => {                    
+                    var oracle = TruffleContract(data);
+                    // actions.provider.specifyOracle(oracle)
+                    oracle.setProvider(web3.currentProvider);
+                    // deploy 
+                    oracle.deployed().then((instance) => {                  
+                    
+                    App.oracle = instance;
+                    App.cvNBI = jcvdata;
+                    if (App.coinbase) {
+                        console.log(App.oracle, "cb exists");
+                        checkMyCV();
+                    }
+                    });
+                    
+                });
+            });
+
+            d3.json('/contracts/EscrowService.json', (escrow) => {
+                var escrow = new TruffleContract(escrow);
+                escrow.setProvider(web3.currentProvider);
+                
+                escrow.deployed().then((instance)=> {
+                    App.escrow = instance;
+                });
+            });
+
+            web3.eth.getCoinbase((e, cb) => {
+                d3.select("#mycoinbase").html(cb);
+                App.coinbase = cb; 
+                if (App.oracle) {
+                    console.log(App.oracle, "exists");
+                    checkMyCV();
+                }                
+            });
+
+            //return App.initContract();
+      }
+
+      initWeb3();
+
       d3.select("#submitter").on("click", (d) => {
-          var name = d3.select("#nameField").node().value;
-          var desc = d3.select("#descField").node().value;
-          var email = d3.select("#emailField").node().value;
-          var phone = d3.select("#phoneField").node().value;
-          var location = d3.select("#locnField").node().value;
+          var publicData = d3.select("#publicData").node().value;
+          var privateData = d3.select("#privateData").node().value;
           var history = d3.select("#jobHist").node().value;
           var education = d3.select("#educationHist").node().value;
           var refs = d3.select("#references").node().value;
 
-          var publicData = {
-              "name":name,
-              "desc":desc              
-          };
-
-          var privateData = {
-              "email":email,
-              "phone":phone,
-              "location":location              
-          };
-
-          var historyData = {
-              "history":history
-          };
-
-          var educationData = {
-              "eduation":education
-          };
-
-          var references = {
-              "ref":refs
-          }
-
-          function initWeb3() {
-              if (typeof web3 !== 'undefined') {
-                  App.web3Provider = web3.currentProvider;
-                  web3 = new Web3(web3.currentProvider);
-                  console.log("using existing");
-              } else {
-                  App.web3Provider = new web3.providers.HttpProvider('http://localhost:8585');
-                  web3 = new Web3(App.web3Provider);
-                  console.log("using new one");
-              }
-
-              return App.initContract();
-          }
-
-          queue()
+          /*queue()
           .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(publicData))
           .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(privateData))
           .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(historyData))
@@ -97,14 +258,29 @@
           .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(references))
           .await((err, pub, priv, hist, edu, ref)=>{
               console.log("Results are", pub, priv, hist, edu, ref);
-          })
+          })*/
 
-          initWeb3();
+          publicData = JSON.parse(publicData);
+          privateData = JSON.parse(privateData); // encrypt
+          //history = JSON.parse(history); // encrypt
+          //education = JSON.parse(education); // encrypt
 
+          //const merged = Object.assign({}, publicData, privateData, history, education);
+          var merged = publicData;          
+          for (var attr in privateData) { merged[attr] = privateData[attr]; }
+          //for (var attr in history) { merged[attr] = history[attr]; }
+          //for (var attr in education) { merged[attr] = education[attr]; }
+          merged.jobHist = history;
+          merged.education = education;
+                    
+          alert(JSON.stringify(merged));
           
+          saveResume(merged);
+          
+          // post data 
 
-          // 
       })
   </script>
+    
 </body>
 </html>

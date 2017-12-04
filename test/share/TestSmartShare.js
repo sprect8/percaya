@@ -1,5 +1,5 @@
 var SmartShare = artifacts.require("SmartShare");
-
+/*
 contract('SmartShare', function(acc) {
     var smartShare;
     it("should register investor using user address for acc[1] - acc[7]", function() { 
@@ -24,7 +24,7 @@ contract('SmartShare', function(acc) {
                     assert.equal(accMap[d], 1);
                 });
             });*/
-        });
+      /*  });
         
     }); 
     
@@ -63,4 +63,4 @@ contract('SmartShare', function(acc) {
             });            
         });        
     });
-});
+});*/

@@ -1,6 +1,7 @@
 pragma solidity ^0.4.4;
 
 import "./CertifierSource.sol";
+import "./EscrowService.sol";
 
 /**
  * This represents the educational institutes
@@ -17,6 +18,12 @@ contract JobEmployer is CertifierSource {
      * 
      */
     string private publicData;
+
+    EscrowService private escrowService;
+    
+    function JobEmployer(address esAddress) {
+        escrowService = EscrowService(esAddress);
+    }
 
     function updateData(string publicInfo) onlyOwner {
         publicData = publicInfo;

@@ -1,6 +1,7 @@
 pragma solidity ^0.4.4;
 
 import "./../zeppelin/lifecycle/Killable.sol";
+import "./EscrowService.sol";
 
 /**
  * This represents a persons' CV
@@ -68,6 +69,16 @@ contract JobCV is Killable {
      * holding the encrypted data
      */
     string private referencesRef;
+
+    EscrowService private escrowService;    
+
+    function JobCV(address esAddress) {
+        escrowService = EscrowService(esAddress);
+    }
+
+    function getEscrowService() returns (address) {
+        return address(escrowService);        
+    }
 
     /**
      * This is information stored in public for all to see. Its a json object that anyone can

@@ -4,11 +4,12 @@ contract('JobCVOracle', function(acc) {
     //JobCVOracle.detaults({from:acc[0]});
     var jobcv;
     console.log("Creating stuff");
-    it("should be able to create new contract", function() { 
+    /*it("should be able to create new contract", function() { 
         return JobCVOracle.deployed().then(function(instance) {
             jobcv = instance;
             console.log("Instance obtained");
-            jobcv.deployJCV().then((x)=>{
+
+            /*jobcv.deployJCV().then((x)=>{
                 //console.log("My Result is : ", x, web3.eth.getCode(x));
                 jobcv.getJCV({from:acc[0]}).then((x)=>{
                     console.log(x);
@@ -19,7 +20,8 @@ contract('JobCVOracle', function(acc) {
                 })
             }).catch((e)=>{
                 console.log("Fucked", e)
-            });
-        });
-    });
+            });*/
+        /*});
+    });*/
 });
+
