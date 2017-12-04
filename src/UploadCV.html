@@ -26,10 +26,16 @@
     Private: <textarea id="privateData"></textarea>
   </div>
   <div id="jobHistory">
-      History: <textarea id="jobHist"></textarea>      
+      History: <textarea id="jobHist"></textarea>    
+      <select id ="employers"></select><button id="addemp">Add employer</button>  
+      <br>
+      <select id ="certifyEmployer"></select><button id="certifyemp">Certify employer</button>  
   </div>
   <div id="educationHistory">
       Education: <textarea id="educationHist"></textarea>      
+      <select id ="institutes"></select><button id="addedu">Add Education</button>  
+      <br>
+      <select id ="certifyInstitute"></select><button id="certifyedu">Certify Education</button>  
   </div>
   <div id="referencesDiv">
       References: <textarea id="references"></textarea>
@@ -47,13 +53,114 @@
         d3.select("#privateData").text(JSON.stringify({phone:'123', email:'123'}));
         d3.select("#jobHist").text(JSON.stringify([{'name':'Google', 'address':'0x00', start:'2010/01/01', end:'2015/01/01'}, {'name':'Facebook', 'address':'0x00', start:'2015/01/02', end:null}]));
         d3.select("#educationHist").text(JSON.stringify([{'name':'Google', 'address':'0x00', start:'2010/01/01', end:'2015/01/01'}, {'name':'Facebook', 'address':'0x00', start:'2015/01/02', end:null}]));
-        d3.select("#references").text("Zain is awesome")
+        d3.select("#references").text("Zain is awesome");
+      }
+
+      d3.selectAll("textarea").attr("rows", "5").attr("cols", "50");
+
+      function addEmployer() {
+          var sel = document.getElementById("employers");
+          console.log(sel);
+          // add employer
+          var json = d3.select("#jobHist").text();
+          if (json == "") json = "[]";
+          var emp = JSON.parse(json);
+
+          var empId = sel.options[sel.selectedIndex].id.replace("id", "");
+          var empText = sel.options[sel.selectedIndex].value;
+
+          var work = {"name":empText, "address":empId, "start":"2010/01/01", "end":"2015/01/01"};
+          emp.push(work);
+          console.log(emp);
+
+          d3.select("#jobHist").text(JSON.stringify(emp));
+      }
+
+      function addEducation() {          
+      }
+
+      function certifyEmployerRequest() {          
+        var sel = document.getElementById("certifyEmployer");
+        console.log(sel);
+        // add employer
+        sel = sel.options[sel.selectedIndex];
+
+        var empId = sel.id.replace("id", "");
+        var empText = sel.value;
+
+        console.log(empId, empText);
+
+        App.escrow.requestData(App.empMapping[empId].owner, 0x0, {from: App.coinbase, value: web3.toWei(3, 'finney')}).then((res) => {
+            console.log("Data Request made to sign on ", empId, App.empMapping[empId]);
+        });
+      }
+
+      function certifyInstituteRequest() {
+
+      }
+
+      d3.select("#addemp").on("click", addEmployer);
+      d3.select("#addedu").on("click", addEducation);
+      d3.select("#certifyemp").on("click", certifyEmployerRequest);
+      d3.select("#certifyedu").on("click", certifyInstituteRequest);
+
+
+
+      function processList(addresses, nbi, mapping) {
+          addresses.forEach((e) => {
+              loadContract(e, nbi).then((instance) => {
+                  instance.address = e;
+                  instance.getPublicData.call({from: App.coinbase}).then((res) => {                      
+                      d3.json("https://ipfs.infura.io:5001/api/v0/cat/"+res, (json) => {
+                        //console.log(e, json);
+                        instance.getOwner.call({from: App.coinbase}).then((owner)=>{
+                        d3.select("#id" + e).html(json.name);
+                        json.owner = owner; // owner is important
+                        mapping[e] = json; // we want the contract id
+                        })
+                     });
+                  })
+              });
+          });
+      }
+
+      function loadEmployerDetails() {
+          // var employer = loadContract()
+          App.oracle.getRegisteredEmployers.call({from:App.coinbase}).then((employers) => {
+              console.log("Registered Employers", employers);              
+              
+              // for each get info
+              // load their contract and get info about them
+              d3.select("#employers").selectAll("option").data(employers).enter()
+              .append("option").attr("id", function(d){return "id"+d})//.html(function(d){return "id"+d});
+
+              // load details then get public data
+              App.empMapping = {};
+              processList(employers, App.empNBI, App.empMapping);
+          })
+      }
+
+      function loadEducationDetails() {
+        App.oracle.getRegisteredInstitutes.call({from:App.coinbase}).then((employers) => {
+              console.log("Registered Institutes", employers);              
+              // for each get info
+              // load their contract and get info about them
+              d3.select("#institutes").selectAll("option").data(employers).enter()
+              .append("option").attr("id", function(d){return "id"+d})//.html(function(d){return "id"+d});
+
+              App.instituteMapping = {};
+              processList(employers, App.eduNBI, App.instituteMapping);
+          })
       }
 
       function loadJCV(address) {
+          return loadContract(address, App.cvNBI);
+      }
+
+      function loadContract(address, nbi) {
         // load details of resume
         
-        let dataObj = JSON.parse(JSON.stringify(App.cvNBI));
+        let dataObj = JSON.parse(JSON.stringify(nbi));
         console.log(dataObj);
         // dataObj.address = address;
         var oracle = TruffleContract(dataObj);
@@ -70,6 +177,43 @@
             });
         }));
       }
+
+      function processReferenceCertification(selectObj, refCheck) {
+          
+        d3.select("#" + selectObj).selectAll("option").data(refCheck.filter((r) => {return !r.certificate}))
+        .enter()
+        .append("option")
+        .attr("id", (x) => {return "id" + x.address})
+        .html((x) => {return x.name});
+      }
+
+
+      function personalRecover(msg, result) {
+            var method = 'personal_ecRecover';
+            var params = [msg, result];
+            var from = App.coinbase;
+            
+            web3.currentProvider.sendAsync({
+                method,
+                params,
+                from,
+            }, function (err, result) {
+                var recovered = result.result
+                console.log('ec recover called back:')
+                console.dir({ err, recovered })
+                if (err) return console.error(err)
+                if (result.error) return console.error(result.error)
+
+
+                if (recovered === from) {
+                    console.log('Successfully ecRecovered signer as ' + from)
+                } else {
+                    console.log('Failed to verify signer when comparing ' + result + ' to ' + from)
+                }
+
+            })
+            
+        }
 
       function load() {
           var address = App.address;
@@ -102,16 +246,21 @@
                   else if (json.jobHist) {
                       inst = d3.select("#jobHist");                      
                       dataObj = JSON.stringify(JSON.parse(json.jobHist));
+                      processReferenceCertification("certifyEmployer", JSON.parse(json.jobHist));
                   }
                   else if (json.education) {
                       inst = d3.select("#educationHist");
                       dataObj = JSON.stringify(JSON.parse(json.education));
+                      processReferenceCertification("certifyInstitute", JSON.parse(json.education));
                   }
                   inst.text(dataObj);
                 })
       
                 console.log("Details is ", details);
                 //this.setState({"details":details});
+                // add each employer reference (without the certified tag) to certify request tab
+                // add each education reference (without the certified tag) to certify education request tab
+
               })
               .catch((error)=>{
                 console.log("Error", error);
@@ -199,28 +348,32 @@
                 web3 = new Web3(App.web3Provider);
                 console.log("using new one");
             }
-
-            d3.json('/contracts/JobCVOracle.json', (data) => {
             
-                d3.json('/contracts/JobCV.json', (jcvdata) => {                    
-                    var oracle = TruffleContract(data);
-                    // actions.provider.specifyOracle(oracle)
-                    oracle.setProvider(web3.currentProvider);
-                    // deploy 
-                    oracle.deployed().then((instance) => {                  
-                    
+            queue()
+            .defer(d3.json, '/contracts/JobCVOracle.json')
+            .defer(d3.json, '/contracts/JobCV.json')
+            .defer(d3.json, '/contracts/JobEmployer.json')
+            .defer(d3.json, '/contracts/JobInstitution.json')
+            .defer(d3.json, '/contracts/EscrowService.json')
+            .await((error, data, jcvdata, empData, instData, escrow) => {
+                App.empNBI = empData;
+                App.eduNBI = instData;
+                var oracle = TruffleContract(data);
+                // actions.provider.specifyOracle(oracle)
+                oracle.setProvider(web3.currentProvider);
+                // deploy 
+                oracle.deployed().then((instance) => {                  
+                
                     App.oracle = instance;
                     App.cvNBI = jcvdata;
                     if (App.coinbase) {
                         console.log(App.oracle, "cb exists");
                         checkMyCV();
+                        loadEmployerDetails();
+                        loadEducationDetails();
                     }
-                    });
-                    
                 });
-            });
 
-            d3.json('/contracts/EscrowService.json', (escrow) => {
                 var escrow = new TruffleContract(escrow);
                 escrow.setProvider(web3.currentProvider);
                 

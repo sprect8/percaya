@@ -1,157 +1,247 @@
 <!DOCTYPE html>
 
 <head>
-  <meta charset="utf-8">
-  <title></title>
-  <meta name="description" content="">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="manifest.json">
-  <link rel="shortcut icon" type="image/png" href="./src/images/favicon.png"/>
-  <link rel="icon" sizes="192x192" href="images/chrome-touch-icon-192x192.png">
-  <script src="https://d3js.org/d3.v4.min.js"></script>
-  <script src="https://d3js.org/queue.v1.min.js"></script>    
-  <script src="node_modules/truffle-contract/dist/truffle-contract.js"></script>
-  <script src="node_modules/truffle-contract-schema/index.js"></script>
-  <script src="node_modules/axios/dist/axios.min.js"></script>
-  <script src="node_modules/truffle-contract-blockchain-utils/index.js"></script>
+    <meta charset="utf-8">
+    <title></title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="manifest" href="manifest.json">
+    <link rel="shortcut icon" type="image/png" href="./src/images/favicon.png" />
+    <link rel="icon" sizes="192x192" href="images/chrome-touch-icon-192x192.png">
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/queue.v1.min.js"></script>
+    <script src="node_modules/truffle-contract/dist/truffle-contract.js"></script>
+    <script src="node_modules/truffle-contract-schema/index.js"></script>
+    <script src="node_modules/axios/dist/axios.min.js"></script>
+    <script src="node_modules/truffle-contract-blockchain-utils/index.js"></script>
 </head>
 
 <body>
-  <div id="status">Creating Employer</div>  
-  <div id="mycoinbase">CoinBase</div>  
-  <div id="name">
-      Public: <textarea id="publicData"></textarea>
-      Certification Request: <select id="selector"></select>
-  </div>
+    <div id="status">Creating Employer</div>
+    <div id="mycoinbase">CoinBase</div>
+    <div id="name">
+        Public: <textarea id="publicData"></textarea> Certification Request: <select id="selector"></select>
+        <button id="viewcv">View</button> <button id="certify">Certify</button> 
+    </div>
 
-  <input type="submit" id='submitter'/>  
+    <button id="submitter">Save</button>
 
-  <script>
-      var App = {};
-      var web3;
+    <script>
+        var App = {};
+        var web3;
 
-      function loadCertifyRequest() {
-          App.escrow.getRequests.call(100, {from: App.coinbase}).then((pending) => {
-              console.log(pending);
-              if (pending.length > 0) {
-                  // show pending list
-                  d3.select("#selector").selectAll("option").data(pending)
-                  .enter().append("option").html(function(d){return d});
-              }
-          })
-      }
+        function personalSign(msg, then) {
+            var from = App.coinbase;
+            var params = [msg, from]
+            var method = 'personal_sign'
 
-      function configure() {
-      // init defaults
-        d3.select("#publicData").text(JSON.stringify({name:'Google', description:'Work for Google', img:'https://cdn.dribbble.com/users/18569/screenshots/2590343/chrome_dribbble.gif'}));        
-      }
+            web3.currentProvider.sendAsync({
+                method,
+                params,
+                from,
+            }, function (err, result) {
+                if (err) return alert("Failed " + err);
+                if (result.error) return alert("Failed " + result.error);
+                console.log('PERSONAL SIGNED:' + JSON.stringify(result.result));
 
-      function loadEmployer(address, empNBI) {
-        // load details of resume
-        
-        let dataObj = JSON.parse(JSON.stringify(empNBI));
-        console.log(dataObj);
-        // dataObj.address = address;
-        var oracle = TruffleContract(dataObj);
-        
-        // actions.provider.specifyOracle(oracle)
-        oracle.setProvider(App.web3Provider);    
-        // deploy 
-        return new Promise((done) => oracle.deployed().then((inst)=>{
-            oracle.address = address; 
-            oracle.at(address); 
-            oracle.deployed().then((inst)=>{
-                console.log(oracle, inst, address);      
-                done(inst)
-            });
-        }));
-      }
+                then(result.result);
+            })
+        }
 
-      function load() {
-          var address = App.address;
-          loadEmployer(address, App.empNBI).then((r)=>{
-            r.address = address;
-            
-            r.getPublicData.call({from:App.coinbase}).then((results)=> {
-              var details = {};
-              axios.get("/getFromIPFS?identifier="+results)
-              .then((response)=>{
-                d3.select("#publicData").text(JSON.stringify(response.data));
+        function loadCertifyRequest() {
+            App.escrow.getRequests.call(0, { from: App.coinbase }).then((pending) => {
+                console.log(pending);
+                if (pending.length > 0) {
+                    // show pending list
+                    d3.select("#selector").selectAll("option").data(pending)
+                        .enter().append("option").attr("id", function(d) {return "id" + d})//html(function (d) { return d });
+                }
+                pending.forEach((p) => { // user address
+                    App.oracle.getCVByAddr.call(p, {from:App.coinbase}).then((add) => { // contract address
+                        loadEmployer(add, App.cvNBI).then((inst) => { // load contract
+                            inst.getPublicDetails.call({from: App.coinbase}).then((pubInfo) => { // get public info
+                                axios.get("/getFromIPFS?identifier=" + pubInfo)
+                                .then((response) => {
+                                    //alert(JSON.stringify(response.data));
+                                    //this.setState({"details":details});
+                                    d3.select("#id" + p).html(response.data.name);
+                                })
+                                .catch((error) => {
+                                    console.log("Error", error);
+                                })
+                                
+                            })
+                        });
+                    });
+                });                
+            })
+        }
 
-      
-                console.log("Details is ", details);
-                //this.setState({"details":details});
-              })
-              .catch((error)=>{
-                console.log("Error", error);
-              })
-            });
-          });
-      }
+        d3.select("#viewcv").on("click", (x) => {
+            // view the cv details
+            // just want to see the public data          
+            var sel = document.getElementById("selector");
+            console.log(sel);
+            // add employer
+            sel = sel.options[sel.selectedIndex];
 
-      function checkEmployer() {
-          console.log(App.coinbase);
-        App.oracle.getEmployer.call({from:App.coinbase}).then((address)=>{
-            if(address == "0x0000000000000000000000000000000000000000") {          
-                d3.select("#status").html("Register a New Employer");
-                App.newCV = true;
-                configure();
-            }
-            else {
-                d3.select("#status").html("Editing an Existing Employer");
-                App.newCV = false;
-                App.address = address;
-                load();
-            }
-        });
-      }
+            var empId = sel.id.replace("id", "");
+            var empText = sel.value;
 
-      function createEmployer(details) {
-        App.oracle.registerEmployer(JSON.stringify(details), 
-            {from: App.coinbase})
-        .then((result)=>{
-            console.log("Successfully created contract");
-            /*App.oracle.getJCV({from: App.coinbase}).then((result)=>{
-                //this.updateJCV(details, result);
-                console.log("JCV retrieved with coinbase as ", result);
-            });*/
-            checkEmployer();
-        }).catch((e)=>{
-            console.log("Failed", e);
-        });      
-      }
+            // we alert the public details for this person
+            // get address based on the selected employee address
 
-      function updateEmployer(details) {
-        var address = App.address;
-        loadEmployer(address, App.empNBI).then((r)=>{
-            r.address = address;
-          
-            r.updateData(details.Hash, 
-                {from: App.coinbase}
-            ).then((res)=>{
-                console.log("Updated", res);
-                // loaded?
-            }).catch((error)=>{
-                console.log(error, "Failed to upload");
+            App.oracle.getCVByAddr.call(empId, {from: App.coinbase}).then((add) => {
+                console.log("Address is", add);
+                loadEmployer(add, App.cvNBI).then((inst) => {
+                    inst.getPublicDetails.call({from: App.coinbase}).then((pubInfo) => {
+                        axios.get("/getFromIPFS?identifier=" + pubInfo)
+                        .then((response) => {
+                            alert(JSON.stringify(response.data));
+                            //this.setState({"details":details});
+                        })
+                        .catch((error) => {
+                            console.log("Error", error);
+                        })
+                        
+                    })
+                });
             });
         });
-      }
 
-      function saveEmployer(publicData) {
-        axios.post("/storeInIPFS", publicData)
-            .then((response)=>{
-                console.log("Created Employer", response);
-                if (App.newCV)
-                  createEmployer(response.data);
-                else
-                  updateEmployer(response.data);
-            })
-            .catch((error)=>{
-                console.log("Error", error);            
-            })
-      }
-      
-      function initWeb3() {
+        d3.select("#certify").on("click", (x) => {
+            var sel = document.getElementById("selector");            
+            // add employer
+            sel = sel.options[sel.selectedIndex];
+
+            var empId = sel.id.replace("id", "");
+            var empText = sel.value;
+
+            // i will sign the user's address with my address
+            // 
+            if (confirm("Sign User Verifies them as having worked in your location. Confirm?")) {
+                personalSign(empId, (x) => {
+                    alert("You have signed the users' id [" + empId + "] result is [" + x + "]");
+
+                    // notify signture and collect our bounty
+                    App.escrow.deliverData(empId, x, {from: App.coinbase}).then((x) => {
+                        alert("Notified user that the information has been signed successfully");
+                    });
+                });                             
+            }
+        });
+
+        function configure() {
+            // init defaults
+            d3.select("#publicData").text(JSON.stringify({ name: 'Google', description: 'Work for Google', img: 'https://cdn.dribbble.com/users/18569/screenshots/2590343/chrome_dribbble.gif' }));
+        }
+
+        function loadEmployer(address, empNBI) {
+            // load details of resume
+
+            let dataObj = JSON.parse(JSON.stringify(empNBI));
+            console.log(dataObj);
+            // dataObj.address = address;
+            var oracle = TruffleContract(dataObj);
+
+            // actions.provider.specifyOracle(oracle)
+            oracle.setProvider(App.web3Provider);
+            // deploy 
+            return new Promise((done) => oracle.deployed().then((inst) => {
+                oracle.address = address;
+                oracle.at(address);
+                oracle.deployed().then((inst) => {
+                    console.log(oracle, inst, address);
+                    done(inst)
+                });
+            }));
+        }
+
+        function load() {
+            var address = App.address;
+            loadEmployer(address, App.empNBI).then((r) => {
+                r.address = address;
+
+                r.getPublicData.call({ from: App.coinbase }).then((results) => {
+                    var details = {};
+                    axios.get("/getFromIPFS?identifier=" + results)
+                        .then((response) => {
+                            d3.select("#publicData").text(JSON.stringify(response.data));
+
+
+                            console.log("Details is ", details);
+                            //this.setState({"details":details});
+                        })
+                        .catch((error) => {
+                            console.log("Error", error);
+                        })
+                });
+            });
+        }
+
+        function checkEmployer() {
+            console.log(App.coinbase);
+            App.oracle.getEmployer.call({ from: App.coinbase }).then((address) => {
+                if (address == "0x0000000000000000000000000000000000000000") {
+                    d3.select("#status").html("Register a New Employer");
+                    App.newCV = true;
+                    configure();
+                }
+                else {
+                    d3.select("#status").html("Editing an Existing Employer");
+                    App.newCV = false;
+                    App.address = address;
+                    load();
+                }
+            });
+        }
+
+        function createEmployer(details) {
+            App.oracle.registerEmployer(details.Hash,
+                { from: App.coinbase })
+                .then((result) => {
+                    console.log("Successfully created contract");
+                    /*App.oracle.getJCV({from: App.coinbase}).then((result)=>{
+                        //this.updateJCV(details, result);
+                        console.log("JCV retrieved with coinbase as ", result);
+                    });*/
+                    checkEmployer();
+                }).catch((e) => {
+                    console.log("Failed", e);
+                });
+        }
+
+        function updateEmployer(details) {
+            var address = App.address;
+            loadEmployer(address, App.empNBI).then((r) => {
+                r.address = address;
+
+                r.updateData(details.Hash,
+                    { from: App.coinbase }
+                ).then((res) => {
+                    console.log("Updated", res);
+                    // loaded?
+                }).catch((error) => {
+                    console.log(error, "Failed to upload");
+                });
+            });
+        }
+
+        function saveEmployer(publicData) {
+            axios.post("/storeInIPFS", publicData)
+                .then((response) => {
+                    console.log("Created Employer", response);
+                    if (App.newCV)
+                        createEmployer(response.data);
+                    else
+                        updateEmployer(response.data);
+                })
+                .catch((error) => {
+                    console.log("Error", error);
+                })
+        }
+
+        function initWeb3() {
             if (typeof web3 !== 'undefined') {
                 App.web3Provider = web3.currentProvider;
                 web3 = new Web3(web3.currentProvider);
@@ -162,71 +252,72 @@
                 console.log("using new one");
             }
 
-            d3.json('/contracts/JobCVOracle.json', (data) => {
-            
-                d3.json('/contracts/JobEmployer.json', (jcvdata) => {                    
-                    var oracle = TruffleContract(data);
-                    // actions.provider.specifyOracle(oracle)
-                    oracle.setProvider(web3.currentProvider);
-                    // deploy 
-                    oracle.deployed().then((instance) => {                  
-                    
+            queue()
+            .defer(d3.json, '/contracts/JobCVOracle.json')
+            .defer(d3.json, '/contracts/JobEmployer.json')
+            .defer(d3.json, '/contracts/JobCV.json')
+            .defer(d3.json, '/contracts/EscrowService.json')
+            .await((error, data, jcvdata, cvdata, escrow) => {
+                var oracle = TruffleContract(data);
+                // actions.provider.specifyOracle(oracle)
+                oracle.setProvider(web3.currentProvider);
+                // deploy 
+                oracle.deployed().then((instance) => {
+
                     App.oracle = instance;
                     App.empNBI = jcvdata;
                     if (App.coinbase) {
                         console.log(App.oracle, "cb exists");
                         checkEmployer();
                     }
-                    });
-                    
-                });
-            });
-
-            d3.json('/contracts/EscrowService.json', (escrow) => {
+                });            
                 var escrow = new TruffleContract(escrow);
                 escrow.setProvider(web3.currentProvider);
-                
-                escrow.deployed().then((instance)=> {
+
+                escrow.deployed().then((instance) => {
                     App.escrow = instance;
                     loadCertifyRequest();
                 });
+
+                App.cvNBI = cvdata;                
             });
 
             web3.eth.getCoinbase((e, cb) => {
                 d3.select("#mycoinbase").html(cb);
-                App.coinbase = cb; 
+                App.coinbase = cb;
                 if (App.oracle) {
                     console.log(App.oracle, "exists");
                     checkEmployer();
-                }                
+                }
             });
 
             //return App.initContract();
-      }
+        }
 
-      initWeb3();
+        initWeb3();
 
-      d3.select("#submitter").on("click", (d) => {
-          var publicData = d3.select("#publicData").node().value;
+        d3.select("#submitter").on("click", (d) => {
+            var publicData = d3.select("#publicData").node().value;
 
-          /*queue()
-          .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(publicData))
-          .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(privateData))
-          .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(historyData))
-          .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(educationData))
-          .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(references))
-          .await((err, pub, priv, hist, edu, ref)=>{
-              console.log("Results are", pub, priv, hist, edu, ref);
-          })*/
+            /*queue()
+            .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(publicData))
+            .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(privateData))
+            .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(historyData))
+            .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(educationData))
+            .defer(d3.text, "/storeInIPFS?content=" + JSON.stringify(references))
+            .await((err, pub, priv, hist, edu, ref)=>{
+                console.log("Results are", pub, priv, hist, edu, ref);
+            })*/
 
-          publicData = JSON.parse(publicData);
-          
-          saveEmployer(publicData);
-          
-          // post data 
+            publicData = JSON.parse(publicData);
 
-      })
-  </script>
-    
+            saveEmployer(publicData);
+
+            // post data 
+
+        })
+    </script>
+
 </body>
+
 </html>

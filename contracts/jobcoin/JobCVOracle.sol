@@ -44,6 +44,10 @@ contract JobCVOracle is Killable {
     return deployedCVs[msg.sender];
   }
 
+  function getCVByAddr(address lookup) constant returns (address) {
+    return deployedCVs[lookup];
+  }
+
   function getInstitute() constant returns (address) {
     return registeredInstitutes[msg.sender];
   }
